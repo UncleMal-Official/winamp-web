@@ -109,8 +109,8 @@ textarea.srcin{height:24px;max-height:120px}
 .plrow .ty{flex:none;color:var(--green-dk);font-size:12px;width:12px}
 .plrow .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .plrow .dur{color:var(--green-dk);font-variant-numeric:tabular-nums}
-.plrow .x{flex:none;color:var(--green-dk);cursor:pointer;padding:0 2px}
 .plrow .x:hover{color:var(--red)}
+.plrow .x{flex:none;color:var(--green-dk);cursor:pointer;padding:0 2px}
 .plrow:hover{color:var(--green)}
 .plrow.cur{color:var(--green);background:#06220f;text-shadow:0 0 6px rgba(27,226,60,.4)}
 .plrow.cur .num,.plrow.cur .dur,.plrow.cur .ty{color:var(--green-dim)}
@@ -277,32 +277,70 @@ textarea.srcin{height:24px;max-height:120px}
   // ===== visualizer =====
   var MODES=['spec','scope','off'],modeIdx=0,vizmode=document.getElementById('vizmode');
   document.getElementById('vizbox').addEventListener('click',function(){modeIdx=(modeIdx+1)%MODES.length;vizmode.textContent=MODES[modeIdx];});
+  // classic Winamp spectrum palette — 16 vertical cells, green at bottom -> yellow -> red at top
+  var SPEC_ROWS=16;
+  var specPalette=(function(){
+    // approximation of the real base-skin viscolor ramp (bottom row 0 -> top row 15)
+    var c=['#1ee23a','#1ee23a','#24dd33','#3ad92e','#58d329','#78cd24','#98c71f','#b4c01a',
+           '#cdb915','#dcb012','#e49a12','#ea7f16','#ee6418','#f2491c','#f62d22','#ff2e2e'];
+    return c;
+  })();
   var peaks=[];
   function draw(){
     requestAnimationFrame(draw);pumpSim();
-    var W=cv.width,H=cv.height;ctx2d.clearRect(0,0,W,H);
+    var W=cv.width,H=cv.height;
+    ctx2d.fillStyle='#000';ctx2d.fillRect(0,0,W,H);
     if(MODES[modeIdx]==='off')return;
     var fileLive=(mode==='file'&&fileAnalyser&&!audio.paused&&!audio.ended&&audio.src);
     if(fileLive){if(MODES[modeIdx]==='spec')fileAnalyser.getByteFrequencyData(freq);else fileAnalyser.getByteTimeDomainData(wave);}
     var env=beatEnv(),streaming=streamPlaying();
+    var dpr=Math.min(window.devicePixelRatio||1,2);
+
     if(MODES[modeIdx]==='spec'){
-      var bins=19,gap=Math.max(1,Math.floor(W*0.006)),bw=(W-(bins-1)*gap)/bins;
-      if(peaks.length!==bins)peaks=new Array(bins).fill(0);
-      var grad=ctx2d.createLinearGradient(0,H,0,0);grad.addColorStop(0,'#1be23c');grad.addColorStop(.5,'#d8e81a');grad.addColorStop(1,'#ff2e2e');
-      for(var i=0;i<bins;i++){var v;
-        if(fileLive){var idx=Math.floor(Math.pow(i/bins,1.35)*(freq.length*0.7));v=freq[idx]/255;}
-        else{var sh=Math.pow(1-i/bins,0.45);var drive=streaming?env:(0.12+0.08*Math.sin(performance.now()/700+i));
-             v=drive*sh*(0.7+0.5*Math.abs(Math.sin(performance.now()/260+i*0.7)));v=Math.max(0.03,Math.min(0.98,v));}
-        var bh=v*H,x=i*(bw+gap);ctx2d.fillStyle=grad;ctx2d.fillRect(x,H-bh,bw,bh);
-        if(bh>peaks[i])peaks[i]=bh;else peaks[i]=Math.max(bh,peaks[i]-H*0.012);
-        ctx2d.fillStyle='#cfd2d5';ctx2d.fillRect(x,H-peaks[i]-Math.max(2,H*0.02),bw,Math.max(2,H*0.02));}
+      // segmented brick bars, Winamp style
+      var bars=Math.max(16,Math.round(W/(5*dpr))); // ~thin bars across the box
+      var cellH=H/SPEC_ROWS;                         // 16 rows top->bottom
+      var slot=W/bars;
+      var bw=Math.max(1,Math.floor(slot*dpr)/dpr - Math.max(1,dpr)); // leave a ~1px gap
+      if(peaks.length!==bars)peaks=new Array(bars).fill(0);
+      var gapY=Math.max(1,Math.floor(dpr));           // 1px dark line between stacked cells
+      for(var i=0;i<bars;i++){
+        var v;
+        if(fileLive){var idx=Math.floor(Math.pow(i/bars,1.45)*(freq.length*0.78));v=freq[idx]/255;}
+        else{var sh=Math.pow(1-i/bars,0.42);var drive=streaming?(0.45+0.55*env):(0.34+0.14*Math.sin(performance.now()/700+i));
+             v=drive*sh*(0.75+0.5*Math.abs(Math.sin(performance.now()/240+i*0.7)));v=Math.max(0,Math.min(1,v));}
+        var lit=Math.round(v*SPEC_ROWS); // how many cells lit from bottom
+        var x=Math.floor(i*slot*dpr)/dpr;
+        for(var r=0;r<SPEC_ROWS;r++){
+          var yTop=H-(r+1)*cellH;
+          if(r<lit){ ctx2d.fillStyle=specPalette[r]; }
+          else { continue; } // unlit = black background (already filled)
+          ctx2d.fillRect(x, yTop+gapY*0.5, bw, cellH-gapY);
+        }
+        // peak cap — bright cell that falls slowly
+        var litPx=lit*cellH;
+        if(litPx>peaks[i])peaks[i]=litPx; else peaks[i]=Math.max(0,peaks[i]-cellH*0.12);
+        if(peaks[i]>cellH*0.5){
+          var capY=H-peaks[i];
+          ctx2d.fillStyle='#d7e3cf';
+          ctx2d.fillRect(x, Math.max(0,capY-gapY), bw, Math.max(1,gapY+0.5));
+        }
+      }
     } else {
-      ctx2d.lineWidth=Math.max(1.3,H*0.03);ctx2d.strokeStyle='#1be23c';ctx2d.shadowColor='rgba(27,226,60,.6)';ctx2d.shadowBlur=H*0.07;ctx2d.beginPath();
-      var N=fileLive?wave.length:256;
-      for(var j=0;j<N;j++){var yv;if(fileLive)yv=wave[j]/255;
-        else{var amp=streaming?(0.12+0.28*env):0.12;yv=0.5+amp*Math.sin(j*0.06+performance.now()/300)*Math.sin(j*0.013+performance.now()/900);}
-        var x2=j/(N-1)*W,y2=yv*H;if(j===0)ctx2d.moveTo(x2,y2);else ctx2d.lineTo(x2,y2);}
-      ctx2d.stroke();ctx2d.shadowBlur=0;
+      // crisp 1px oscilloscope — thin, no glow, classic green
+      ctx2d.lineWidth=Math.max(1,Math.floor(dpr));
+      ctx2d.strokeStyle='#1be23c';ctx2d.lineJoin='round';
+      ctx2d.beginPath();
+      var N=fileLive?wave.length:Math.max(64,Math.floor(W/dpr));
+      var step=W/(N-1);
+      for(var j=0;j<N;j++){
+        var yv;
+        if(fileLive)yv=wave[j]/255;
+        else{var amp=streaming?(0.10+0.26*env):0.10;yv=0.5+amp*Math.sin(j*0.07+performance.now()/300)*Math.sin(j*0.015+performance.now()/900);}
+        var x2=j*step, y2=Math.round(yv*(H-2))+1;
+        if(j===0)ctx2d.moveTo(x2,y2);else ctx2d.lineTo(x2,y2);
+      }
+      ctx2d.stroke();
     }
   }
 
@@ -513,4 +551,4 @@ textarea.srcin{height:24px;max-height:120px}
   fitCanvas();requestAnimationFrame(draw);
   setTimeout(function(){ if(!ytReady)ytnote.innerHTML='Paste YouTube <b>links</b> (one per line to queue a playlist) and hit ADD. Hosted on a real URL this plays; in the Claude preview use local files.'; initApple(); },900);
 })();
-                                                       </script>
+       </script>
