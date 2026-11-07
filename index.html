@@ -50,11 +50,11 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .chan{display:flex;gap:4px;font-size:10px;letter-spacing:1px;flex:none}
 .chan span{color:var(--green-dk)}
 .chan span.on{color:var(--green);text-shadow:0 0 5px rgba(27,226,60,.5)}
-.disp-main{display:flex;gap:8px;align-items:center;flex:1}
+.disp-main{display:flex;gap:8px;align-items:center;height:44px}
 .time{font-size:clamp(26px,7vw,36px);line-height:.78;color:var(--green);text-shadow:0 0 7px rgba(27,226,60,.55);letter-spacing:2px;font-variant-numeric:tabular-nums;flex:none}
 .kbps{font-size:12px;color:var(--green-dim);line-height:1.1;flex:none;white-space:nowrap}
 .kbps b{color:var(--green);font-weight:400}
-.viz{flex:1;min-width:56px;align-self:stretch;position:relative;cursor:pointer;overflow:hidden;min-height:30px}
+.viz{flex:1;min-width:56px;height:44px;position:relative;cursor:pointer;overflow:hidden}
 .viz canvas{display:block;width:100%;height:100%}
 .viz .mode{position:absolute;top:0;right:1px;font-size:9px;color:var(--green-dk);letter-spacing:1px;pointer-events:none;text-transform:uppercase}
 .seek input[type=range]{width:100%;height:11px}
@@ -109,8 +109,8 @@ textarea.srcin{height:24px;max-height:120px}
 .plrow .ty{flex:none;color:var(--green-dk);font-size:12px;width:12px}
 .plrow .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .plrow .dur{color:var(--green-dk);font-variant-numeric:tabular-nums}
-.plrow .x:hover{color:var(--red)}
 .plrow .x{flex:none;color:var(--green-dk);cursor:pointer;padding:0 2px}
+.plrow .x:hover{color:var(--red)}
 .plrow:hover{color:var(--green)}
 .plrow.cur{color:var(--green);background:#06220f;text-shadow:0 0 6px rgba(27,226,60,.4)}
 .plrow.cur .num,.plrow.cur .dur,.plrow.cur .ty{color:var(--green-dim)}
@@ -126,6 +126,39 @@ textarea.srcin{height:24px;max-height:120px}
 .hint{position:relative;z-index:1;font-size:13px;color:var(--green-dim);letter-spacing:1px;text-align:center;opacity:.85}
 :focus-visible{outline:2px solid var(--green);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.title-scroll .run{animation:none!important}}
+/* ---- mobile: bigger touch targets, tighter rhythm, no overflow ---- */
+@media (max-width:480px){
+  body{padding-block:14px;gap:12px;justify-content:flex-start}
+  .brand h1{font-size:30px}
+  .wa{width:100%}
+  .disp-main{height:50px}
+  .viz{height:50px}
+  .time{font-size:32px}
+  .btn{min-width:38px;height:34px;font-size:16px}
+  .btn.eject{margin-left:6px}
+  .tgl{min-width:34px;height:28px;font-size:11px}
+  .winbtns b{width:18px;height:16px;font-size:9px}
+  .transport{gap:3px}
+  .controls{gap:6px}
+  input[type=range]{height:16px}
+  input[type=range]::-webkit-slider-thumb{width:14px;height:22px}
+  input[type=range]::-moz-range-thumb{width:14px;height:22px}
+  .seek input[type=range]{height:18px}
+  .srcin{min-height:34px;font-size:14px}
+  textarea.srcin{height:40px;overflow:hidden;line-height:1.25}
+  .srcgo{height:34px;font-size:15px}
+  .mdlaunch{height:40px;font-size:15px}
+  .hint{font-size:12px}
+  /* keep balance from shrinking the volume row too hard */
+  .vols{min-width:0;flex-wrap:wrap}
+  #bal{max-width:120px!important}
+}
+@media (max-width:360px){
+  .brand h1{font-size:26px}
+  .time{font-size:28px}
+  .srcrow .lbl{display:none}
+  .tgl{min-width:30px;font-size:10px}
+}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -178,7 +211,7 @@ textarea.srcin{height:24px;max-height:120px}
       </div>
       <div class="srcrow">
         <span class="lbl">▶ YT</span>
-        <textarea class="srcin" id="ytin" rows="1" placeholder="paste YouTube links — one per line for a playlist — or a search term…"></textarea>
+        <textarea class="srcin" id="ytin" rows="1" placeholder="paste YouTube links (one per line) or a song name…"></textarea>
         <button class="srcgo yt" id="ytadd">ADD</button>
         <div class="srcnote" id="ytnote"></div>
       </div>
@@ -551,4 +584,4 @@ textarea.srcin{height:24px;max-height:120px}
   fitCanvas();requestAnimationFrame(draw);
   setTimeout(function(){ if(!ytReady)ytnote.innerHTML='Paste YouTube <b>links</b> (one per line to queue a playlist) and hit ADD. Hosted on a real URL this plays; in the Claude preview use local files.'; initApple(); },900);
 })();
-       </script>
+                                                                              </script>
